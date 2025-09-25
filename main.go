@@ -10,77 +10,97 @@ import (
 )
 
 func main() {
-	for {
-		resp, err := http.Get("http://127.0.0.1:80/_stats")
+	const url = "http://srv.msk01.gigacorp.local/_stats"
+	errs := 0
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		resp, err := http.Get(url)
 		if err != nil {
-			time.Sleep(time.Second)
+			errs++
+			checkErrors(errs)
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
+			errs++
+			checkErrors(errs)
 			resp.Body.Close()
-			time.Sleep(time.Second)
 			continue
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			time.Sleep(time.Second)
+			errs++
+			checkErrors(errs)
 			continue
 		}
 
-		fields := strings.Split(strings.TrimSpace(string(body)), ",")
-		if len(fields) != 7 {
-			time.Sleep(time.Second)
+		data := strings.TrimSpace(string(body))
+		parts := strings.Split(data, ",")
+		if len(parts) != 7 {
+			errs++
+			checkErrors(errs)
 			continue
 		}
 
-		// парсим в int
-		vals := make([]int, 7)
-		ok := true
-		for i, f := range fields {
-			val, err := strconv.Atoi(f)
+		values := make([]int64, 7)
+		for i, part := range parts {
+			val, err := strconv.ParseInt(part, 10, 64)
 			if err != nil {
-				ok = false
-				break
+				errs++
+				checkErrors(errs)
+				continue
 			}
-			vals[i] = val
-		}
-		if !ok {
-			time.Sleep(time.Second)
-			continue
+			values[i] = val
 		}
 
-		// раскладываем
-		loadAvg := vals[0]
-		memAvail := vals[1]
-		memUsed := vals[2]
-		diskAvail := vals[3]
-		diskUsed := vals[4]
-		netAvail := vals[5]
-		netUsed := vals[6]
+		loadAvg := values[0]
+		memTotal := values[1]
+		memUsed := values[2]
+		diskTotal := values[3]
+		diskUsed := values[4]
+		netTotal := values[5]
+		netUsed := values[6]
 
-		// проверки
+		// Load Average
 		if loadAvg > 30 {
 			fmt.Printf("Load Average is too high: %d\n", loadAvg)
 		}
 
-		memPercent := memUsed * 100 / memAvail
-		if memPercent > 85 {
-			fmt.Printf("Memory usage too high: %d%%\n", memPercent)
+		// Memory
+		if memTotal > 0 {
+			usage := memUsed * 100 / memTotal
+			if usage > 80 {
+				fmt.Printf("Memory usage too high: %d%%\n", usage)
+			}
 		}
 
-		freeDiskMb := (diskAvail - diskUsed) / 1024 / 1024
-		if freeDiskMb < 1024 {
-			fmt.Printf("Free disk space is too low: %d Mb left\n", freeDiskMb)
+		// Disk
+		if diskTotal > 0 {
+			usage := diskUsed * 100 / diskTotal
+			if usage > 90 {
+				freeDiskMb := (diskTotal - diskUsed) / 1024 / 1024
+				fmt.Printf("Free disk space is too low: %d Mb left\n", freeDiskMb)
+			}
 		}
 
-		freeNetMbit := (netAvail - netUsed) / 1000 / 1000 // ВАЖНО: именно 1000, а не 1024
-		if freeNetMbit < 1000 {
-			fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeNetMbit)
+		// Network
+		if netTotal > 0 {
+			usage := netUsed * 100 / netTotal
+			if usage > 90 {
+				freeMbit := (netTotal - netUsed) * 8 / 1000 / 1000
+				fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
+			}
 		}
+	}
+}
 
-		time.Sleep(time.Second)
+func checkErrors(errs int) {
+	if errs >= 3 {
+		fmt.Println("Unable to fetch server statistic")
 	}
 }
