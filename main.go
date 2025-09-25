@@ -81,7 +81,11 @@ func main() {
 		if values[1] > 0 {
 			usage := float64(values[2]) * 100 / float64(values[1])
 			if usage > 80 {
-				fmt.Printf("Memory usage too high: %.1f%%\n", usage)
+				if usage == float64(int64(usage)) {
+					fmt.Printf("Memory usage too high: %.0f%%\n", usage) // Целое число
+				} else {
+					fmt.Printf("Memory usage too high: %.1f%%\n", usage) // Дробное
+				}
 			}
 		}
 
@@ -94,12 +98,17 @@ func main() {
 			}
 		}
 
-		// Проверка сети
+		// Проверка сети - ИСПРАВЛЕНО!
 		if values[5] > 0 {
 			usage := float64(values[6]) * 100 / float64(values[5])
 			if usage > 90 {
-				freeMbit := float64(values[5]-values[6]) * 8 / (1000 * 1000) // Mbit/s
-				fmt.Printf("Network bandwidth usage high: %.1f Mbit/s available\n", freeMbit)
+				// Правильный расчет: байты/с → биты/с → мегабиты/с
+				freeMbit := float64(values[5]-values[6]) * 8 / (1024 * 1024)
+				if freeMbit == float64(int64(freeMbit)) {
+					fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbit)
+				} else {
+					fmt.Printf("Network bandwidth usage high: %.1f Mbit/s available\n", freeMbit)
+				}
 			}
 		}
 	}
