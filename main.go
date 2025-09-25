@@ -87,7 +87,7 @@ func main() {
 
 		// Проверка диска
 		if values[3] > 0 {
-			usage := float64(values[4]) * 100 / float64(values[3])
+			usage := values[4] * 100 / (values[3])
 			if usage > 90 {
 				left := (values[3] - values[4]) / (1024 * 1024) // MB
 				fmt.Printf("Free disk space is too low: %d Mb left\n", left)
@@ -96,14 +96,14 @@ func main() {
 
 		// Проверка сети - ИСПРАВЛЕНО!
 		if values[5] > 0 {
-			usage := float64(values[6]) * 100 / float64(values[5])
+			usage := values[6] * 100 / values[5]
 			if usage > 90 {
 				// Правильный расчет: байты/с → биты/с → мегабиты/с
-				freeMbit := float64(values[5]-values[6]) * 8 / (1024 * 1024)
-				if freeMbit == float64(int64(freeMbit)) {
-					fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbit)
+				freeMbit := (values[5] - values[6]) * 8 / (1024 * 1024)
+				if freeMbit == (int64(freeMbit)) {
+					fmt.Printf("Network bandwidth usage high: %.0d Mbit/s available\n", freeMbit)
 				} else {
-					fmt.Printf("Network bandwidth usage high: %.1f Mbit/s available\n", freeMbit)
+					fmt.Printf("Network bandwidth usage high: %.1d Mbit/s available\n", freeMbit)
 				}
 			}
 		}
