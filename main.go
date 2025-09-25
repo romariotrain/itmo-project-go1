@@ -92,7 +92,7 @@ func main() {
 		if netTotal > 0 {
 			usage := netUsed * 100 / netTotal
 			if usage > 90 {
-				freeMbit := (netTotal - netUsed) * 8 / 1000 / 1000
+				freeMbit := (netTotal - netUsed) / 1000 / 1000
 				fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
 			}
 		}
