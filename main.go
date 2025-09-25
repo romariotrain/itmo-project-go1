@@ -13,11 +13,15 @@ func main() {
 	const url = "http://srv.msk01.gigacorp.local/_stats"
 	errs := 0
 
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			errs++
 			checkErrors(errs)
@@ -47,60 +51,55 @@ func main() {
 			continue
 		}
 
-		mapa := make(map[string]int64)
-
+		// Парсим все значения сначала
+		values := make([]int64, 7)
+		parseError := false
 		for i, part := range parts {
-			val, err := strconv.ParseInt(part, 10, 64)
-			if err != nil {
-				errs++
-				checkErrors(errs)
+			val, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+			if err != nil || val < 0 {
+				parseError = true
 				break
 			}
+			values[i] = val
+		}
 
-			switch i {
-			case 0: // Load Average
-				mapa["Load Average"] = val
-				if val > 30 {
-					fmt.Printf("Load Average is too high: %d\n", val)
-				}
+		if parseError {
+			errs++
+			checkErrors(errs)
+			continue
+		}
 
-			case 1: // Mem Total
-				mapa["Mem Total"] = val
+		// Сброс счетчика ошибок при успешном парсинге
+		errs = 0
 
-			case 2: // Mem Used
-				mapa["Mem Used"] = val
-				if mapa["Mem Total"] > 0 {
-					usage := val * 100 / mapa["Mem Total"]
-					if usage > 80 {
-						fmt.Printf("Memory usage too high: %d%%\n", usage)
-					}
-				}
+		// Проверка Load Average
+		if values[0] > 30 {
+			fmt.Printf("Load Average is too high: %d\n", values[0])
+		}
 
-			case 3: // Disk Total
-				mapa["Disk Total"] = val
+		// Проверка памяти
+		if values[1] > 0 {
+			usage := float64(values[2]) * 100 / float64(values[1])
+			if usage > 80 {
+				fmt.Printf("Memory usage too high: %.1f%%\n", usage)
+			}
+		}
 
-			case 4: // Disk Used
-				mapa["Disk Used"] = val
-				if mapa["Disk Total"] > 0 {
-					usage := val * 100 / mapa["Disk Total"]
-					if usage > 90 {
-						left := (mapa["Disk Total"] - val) / 1024 / 1024
-						fmt.Printf("Free disk space is too low: %d Mb left\n", left)
-					}
-				}
+		// Проверка диска
+		if values[3] > 0 {
+			usage := float64(values[4]) * 100 / float64(values[3])
+			if usage > 90 {
+				left := (values[3] - values[4]) / (1024 * 1024) // MB
+				fmt.Printf("Free disk space is too low: %d Mb left\n", left)
+			}
+		}
 
-			case 5: // Net Total
-				mapa["Net Total"] = val
-
-			case 6: // Net Used
-				mapa["Net Used"] = val
-				if mapa["Net Total"] > 0 {
-					usage := val * 100 / mapa["Net Total"]
-					if usage > 90 {
-						freeMbit := float64(mapa["Net Total"]-val) / 1024 / 1024
-						fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbit)
-					}
-				}
+		// Проверка сети
+		if values[5] > 0 {
+			usage := float64(values[6]) * 100 / float64(values[5])
+			if usage > 90 {
+				freeMbit := float64(values[5]-values[6]) * 8 / (1000 * 1000) // Mbit/s
+				fmt.Printf("Network bandwidth usage high: %.1f Mbit/s available\n", freeMbit)
 			}
 		}
 	}
