@@ -7,41 +7,41 @@ import (
 )
 
 func main() {
-	// const url = "http://srv.msk01.gigacorp.local/_stats"
+	const url = "http://srv.msk01.gigacorp.local/_stats"
 	errs := 0
 
-	// client := &http.Client{
-	// 	Timeout: 10 * time.Second,
-	// }
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 
-	// ticker := time.NewTicker(10 * time.Second)
-	// defer ticker.Stop()
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
-	// for range ticker.C {
-	// 	resp, err := client.Get(url)
-	// 	if err != nil {
-	// 		errs++
-	// 		checkErrors(errs)
-	// 		continue
-	// 	}
+	for range ticker.C {
+		resp, err := client.Get(url)
+		if err != nil {
+			errs++
+			checkErrors(errs)
+			continue
+		}
 
-	// 	if resp.StatusCode != 200 {
-	// 		errs++
-	// 		checkErrors(errs)
-	// 		resp.Body.Close()
-	// 		continue
-	// 	}
+		if resp.StatusCode != 200 {
+			errs++
+			checkErrors(errs)
+			resp.Body.Close()
+			continue
+		}
 
-	// 	body, err := io.ReadAll(resp.Body)
-	// 	resp.Body.Close()
-	// 	if err != nil {
-	// 		errs++
-	// 		checkErrors(errs)
-	// 		continue
-	// 	}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			errs++
+			checkErrors(errs)
+			continue
+		}
 
-	// 	data := strings.TrimSpace(string(body))
-	data := "5,4590014910,1553934306,356907897495,101121279080,6429038763,6377014703"
+		data := strings.TrimSpace(string(body))
+
 	parts := strings.Split(data, ",")
 	fmt.Println(parts)
 	if len(parts) != 7 {
