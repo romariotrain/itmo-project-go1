@@ -13,7 +13,7 @@ func main() {
 	const url = "http://srv.msk01.gigacorp.local/_stats"
 	errs := 0
 
-	ticker := time.NewTicker(10 * time.Second) // опрос каждые 10 секунд
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -50,21 +50,6 @@ func main() {
 		mapa := make(map[string]int64)
 
 		for i, part := range parts {
-			// Load Average может быть дробным
-			if i == 0 {
-				load, err := strconv.ParseFloat(part, 64)
-				if err != nil {
-					errs++
-					checkErrors(errs)
-					break
-				}
-				mapa["Load Average"] = int64(load)
-				if load > 30 {
-					fmt.Printf("Load Average is too high: %.2f\n", load)
-				}
-				continue
-			}
-
 			val, err := strconv.ParseInt(part, 10, 64)
 			if err != nil {
 				errs++
@@ -73,36 +58,47 @@ func main() {
 			}
 
 			switch i {
-			case 1:
+			case 0: // Load Average
+				mapa["Load Average"] = val
+				if val > 30 {
+					fmt.Printf("Load Average is too high: %d\n", val)
+				}
+
+			case 1: // Mem Total
 				mapa["Mem Total"] = val
-			case 2:
+
+			case 2: // Mem Used
 				mapa["Mem Used"] = val
 				if mapa["Mem Total"] > 0 {
-					usage := float64(val) / float64(mapa["Mem Total"]) * 100
+					usage := val * 100 / mapa["Mem Total"]
 					if usage > 80 {
-						fmt.Printf("Memory usage too high: %.1f%%\n", usage)
+						fmt.Printf("Memory usage too high: %d%%\n", usage)
 					}
 				}
-			case 3:
+
+			case 3: // Disk Total
 				mapa["Disk Total"] = val
-			case 4:
+
+			case 4: // Disk Used
 				mapa["Disk Used"] = val
 				if mapa["Disk Total"] > 0 {
-					usage := float64(val) / float64(mapa["Disk Total"])
-					if usage > 0.9 {
+					usage := val * 100 / mapa["Disk Total"]
+					if usage > 90 {
 						left := (mapa["Disk Total"] - val) / 1024 / 1024
 						fmt.Printf("Free disk space is too low: %d Mb left\n", left)
 					}
 				}
-			case 5:
+
+			case 5: // Net Total
 				mapa["Net Total"] = val
-			case 6:
+
+			case 6: // Net Used
 				mapa["Net Used"] = val
 				if mapa["Net Total"] > 0 {
-					usage := float64(val) / float64(mapa["Net Total"])
-					if usage > 0.9 {
-						freeMbit := float64((mapa["Net Total"]-val)*8) / 1024 / 1024
-						fmt.Printf("Network bandwidth usage high: %.2f Mbit/s available\n", freeMbit)
+					usage := val * 100 / mapa["Net Total"]
+					if usage > 90 {
+						freeMbit := (mapa["Net Total"] - val) * 8 / 1024 / 1024
+						fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
 					}
 				}
 			}
