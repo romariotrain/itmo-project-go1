@@ -97,8 +97,8 @@ func main() {
 				if mapa["Net Total"] > 0 {
 					usage := val * 100 / mapa["Net Total"]
 					if usage > 90 {
-						freeMbit := ((mapa["Net Total"] - val) * 8) / (1024 * 1024)
-						fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
+						freeMbit := float64(mapa["Net Total"]-val) * 8 / 1024 / 1024
+						fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbit)
 					}
 				}
 			}
