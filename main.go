@@ -10,104 +10,77 @@ import (
 )
 
 func main() {
-	const url = "http://srv.msk01.gigacorp.local/_stats"
-	errs := 0
-
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		resp, err := client.Get(url)
+	for {
+		resp, err := http.Get("http://127.0.0.1:80/_stats")
 		if err != nil {
-			errs++
-			checkErrors(errs)
+			time.Sleep(time.Second)
 			continue
 		}
 
-		if resp.StatusCode != 200 {
-			errs++
-			checkErrors(errs)
+		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
+			time.Sleep(time.Second)
 			continue
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			errs++
-			checkErrors(errs)
+			time.Sleep(time.Second)
 			continue
 		}
 
-		data := strings.TrimSpace(string(body))
-		parts := strings.Split(data, ",")
-		if len(parts) != 7 {
-			errs++
-			checkErrors(errs)
+		fields := strings.Split(strings.TrimSpace(string(body)), ",")
+		if len(fields) != 7 {
+			time.Sleep(time.Second)
 			continue
 		}
 
-		// Парсим все значения сначала
-		values := make([]int64, 7)
-		parseError := false
-		for i, part := range parts {
-			val, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		// парсим в int
+		vals := make([]int, 7)
+		ok := true
+		for i, f := range fields {
+			val, err := strconv.Atoi(f)
 			if err != nil {
-				parseError = true
+				ok = false
 				break
 			}
-			values[i] = val
+			vals[i] = val
 		}
-
-		if parseError {
-			errs++
-			checkErrors(errs)
+		if !ok {
+			time.Sleep(time.Second)
 			continue
 		}
 
-		// Сброс счетчика ошибок при успешном парсинге
-		errs = 0
+		// раскладываем
+		loadAvg := vals[0]
+		memAvail := vals[1]
+		memUsed := vals[2]
+		diskAvail := vals[3]
+		diskUsed := vals[4]
+		netAvail := vals[5]
+		netUsed := vals[6]
 
-		// Проверка Load Average
-		if values[0] > 30 {
-			fmt.Printf("Load Average is too high: %d\n", values[0])
+		// проверки
+		if loadAvg > 30 {
+			fmt.Printf("Load Average is too high: %d\n", loadAvg)
 		}
 
-		// Проверка памяти - ЦЕЛОЧИСЛЕННОЕ ДЕЛЕНИЕ как в тестах
-		if values[1] > 0 {
-			usage := values[2] * 100 / values[1] // Целочисленное деление
-			if usage > 80 {
-				fmt.Printf("Memory usage too high: %d%%\n", usage)
-			}
+		memPercent := memUsed * 100 / memAvail
+		if memPercent > 85 {
+			fmt.Printf("Memory usage too high: %d%%\n", memPercent)
 		}
 
-		// Проверка диска
-		if values[3] > 0 {
-			usage := values[4] * 100 / values[3] // Целочисленное деление
-			if usage > 90 {
-				left := (values[3] - values[4]) / (1024 * 1024) // MB
-				fmt.Printf("Free disk space is too low: %d Mb left\n", left)
-			}
+		freeDiskMb := (diskAvail - diskUsed) / 1024 / 1024
+		if freeDiskMb < 1024 {
+			fmt.Printf("Free disk space is too low: %d Mb left\n", freeDiskMb)
 		}
 
-		// Проверка сети - ИСПРАВЛЕНИЕ!
-		if values[5] > 0 {
-			usage := values[6] * 100 / values[5] // Целочисленное деление
-			if usage > 90 {
-				// ДЕСЯТИЧНЫЕ мегабиты: 1 Mbps = 1,000,000 bps
-				freeMbit := (values[5] - values[6]) * 8 / 1000000
-				fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
-			}
+		freeNetMbit := (netAvail - netUsed) / 1000 / 1000 // ВАЖНО: именно 1000, а не 1024
+		if freeNetMbit < 1000 {
+			fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeNetMbit)
 		}
-	}
-}
 
-func checkErrors(errs int) {
-	if errs >= 3 {
-		fmt.Println("Unable to fetch server statistic")
+		time.Sleep(time.Second)
 	}
 }
