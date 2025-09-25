@@ -79,13 +79,9 @@ func main() {
 
 		// Проверка памяти
 		if values[1] > 0 {
-			usage := float64(values[2]) * 100 / float64(values[1])
+			usage := (values[2]) * 100 / (values[1])
 			if usage > 80 {
-				if usage == float64(int64(usage)) {
-					fmt.Printf("Memory usage too high: %.0f%%\n", usage) // Целое число
-				} else {
-					fmt.Printf("Memory usage too high: %.1f%%\n", usage) // Дробное
-				}
+				fmt.Printf("Memory usage too high: %.0d%%\n", usage) // Целое число
 			}
 		}
 
